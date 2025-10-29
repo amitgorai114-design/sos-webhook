@@ -2,58 +2,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const uploadForm = document.getElementById("uploadForm");
   const fileInput = document.getElementById("cvFile");
 
-  // --- 1️⃣ Ask for location permission ---
+  // Request location access
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
         console.log("Location:", latitude, longitude);
 
-        // Send location to server
         fetch("/location", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ latitude, longitude }),
         })
           .then((res) => res.text())
-          .then((msg) => console.log("Server response:", msg))
-          .catch((err) => console.error("Error sending location:", err));
+          .then(console.log)
+          .catch(console.error);
       },
-      (error) => {
-        console.error("Location access denied or error:", error);
-      }
+      (err) => console.error("Location error:", err)
     );
   } else {
-    alert("Geolocation not supported by this browser.");
+    alert("Geolocation not supported.");
   }
 
-  // --- 2️⃣ Handle CV upload ---
+  // Upload form
   uploadForm.addEventListener("submit", (e) => {
     e.preventDefault();
-
     const file = fileInput.files[0];
-    if (!file) {
-      alert("Please select a file before uploading!");
-      return;
-    }
+    if (!file) return alert("Please select a file!");
 
     const formData = new FormData();
     formData.append("cv", file);
 
-    fetch("/upload", {
-      method: "POST",
-      body: formData,
-    })
+    fetch("/upload", { method: "POST", body: formData })
       .then((res) => res.text())
-      .then((msg) => {
-        alert(msg);
-        console.log("Upload response:", msg);
-      })
-      .catch((err) => {
-        console.error("Error uploading file:", err);
-        alert("Upload failed.");
-      });
+      .then((msg) => alert(msg))
+      .catch((err) => alert("Upload failed: " + err.message));
   });
 });

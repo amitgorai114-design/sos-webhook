@@ -1,82 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SOS Webhook</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-    }
-    input[type="file"] {
-      margin: 20px;
-    }
-    button {
-      background-color: #007bff;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>SOS Webhook</h1>
   <p>Upload your CV here:</p>
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" id="cvFile" name="cvFile" required />
+
+  <form id="uploadForm">
+    <input type="file" id="cvFile" name="cv" accept=".pdf,.doc,.docx" />
     <button type="submit">Upload CV</button>
   </form>
 
-  <p id="status"></p>
-
-  <script>
-    // 🔹 Ask for location permission when the page loads
-    window.onload = function () {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            console.log("✅ Location access granted!");
-            console.log("Latitude:", position.coords.latitude);
-            console.log("Longitude:", position.coords.longitude);
-          },
-          (error) => {
-            console.warn("⚠️ Location access denied or unavailable:", error.message);
-            alert("Please allow location access for SOS features to work properly.");
-          }
-        );
-      } else {
-        alert("Geolocation is not supported by this browser.");
-      }
-    };
-
-    // 🔹 Handle CV upload
-    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById("cvFile");
-      const status = document.getElementById("status");
-      const formData = new FormData();
-      formData.append("cvFile", fileInput.files[0]);
-
-      status.textContent = "Uploading...";
-      try {
-        const response = await fetch("/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await response.text();
-        status.textContent = data;
-      } catch (err) {
-        status.textContent = "Error uploading file.";
-        console.error(err);
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
