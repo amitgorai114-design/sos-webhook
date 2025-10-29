@@ -1,23 +1,37 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const path = require("path");
+const multer = require("multer");
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 10000;
 
-let latest = null;
+// Middleware
+app.use(express.static(path.join(__dirname, "public")));
 
-app.post('/share-location', (req, res) => {
-  latest = { ...req.body, receivedAt: Date.now() };
-  console.log('Received:', latest);
-  // Here you can add notify logic (SMS, email) if you want
-  res.status(200).json({ ok: true });
+// Storage config for uploaded files
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "uploads"));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  },
 });
 
-app.get('/latest', (req, res) => {
-  if (!latest) return res.status(404).json({ error: 'No location yet' });
-  res.json(latest);
+const upload = multer({ storage });
+
+// Route to handle file upload
+app.post("/upload", upload.single("cv"), (req, res) => {
+  console.log("File uploaded:", req.file);
+  res.send("CV uploaded successfully!");
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log('Server running on port', port));
+// Serve main page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOS Webhook</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>SOS Webhook</h1>
+    <p>Upload your CV here:</p>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx" required>
+      <button type="submit">Upload CV</button>
+    </form>
+
+    <p id="message"></p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
