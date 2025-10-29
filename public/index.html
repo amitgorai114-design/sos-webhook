@@ -1,24 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SOS Webhook</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>SOS Webhook</h1>
-      <p>Upload your CV here:</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload CV</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Upload Your CV</h2>
 
-      <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" name="cv" id="cvInput" required />
-        <button type="submit">Upload CV</button>
-      </form>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="cv" id="cvInput" required>
+      <button type="submit">Upload CV</button>
+    </form>
 
-      <p id="status"></p>
-    </div>
+    <p id="status"></p>
+  </div>
 
-    <script src="script.js"></script>
-  </body>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Get location before upload
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        const formData = new FormData(form);
+        formData.append('latitude', lat);
+        formData.append('longitude', lon);
+
+        status.textContent = "Uploading...";
+
+        try {
+          const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (response.ok) {
+            status.textContent = "✅ Uploaded Successfully!";
+            form.reset();
+          } else {
+            status.textContent = "❌ Upload Failed. Try again.";
+          }
+        } catch (error) {
+          status.textContent = "⚠️ Error during upload.";
+          console.error(error);
+        }
+
+      }, () => {
+        alert("Please allow location access to upload.");
+      });
+    });
+  </script>
+</body>
 </html>
