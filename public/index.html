@@ -1,49 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Upload CV</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .upload-box {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 300px;
+    }
+
+    h2 {
+      margin-bottom: 1rem;
+    }
+
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #message {
+      margin-top: 1rem;
+      color: green;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
+  <div class="upload-box">
     <h2>Upload Your CV</h2>
-    <form id="uploadForm">
-      <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,.png,.jpg" required>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="cv" required />
       <button type="submit">Upload</button>
     </form>
-    <p id="status"></p>
+    <p id="message"></p>
   </div>
 
   <script>
-    const form = document.getElementById('uploadForm');
-    const status = document.getElementById('status');
+    // Automatically ask for location when page loads
+    let userLocation = null;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          userLocation = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
+          };
+        },
+        (err) => {
+          console.warn("Location permission denied:", err);
+        }
+      );
+    }
 
-    form.addEventListener('submit', async (e) => {
+    // Handle file upload
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      if (!navigator.geolocation) {
-        status.textContent = "❌ Location not supported by browser.";
-        return;
+      const formData = new FormData(e.target);
+
+      // Attach location if available
+      if (userLocation) {
+        formData.append("latitude", userLocation.latitude);
+        formData.append("longitude", userLocation.longitude);
       }
 
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const formData = new FormData();
-        const file = document.getElementById('cv').files[0];
-        formData.append('cv', file);
-        formData.append('latitude', pos.coords.latitude);
-        formData.append('longitude', pos.coords.longitude);
-
-        status.textContent = "📤 Uploading...";
-
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        const text = await res.text();
-
-        status.textContent = text;
-      }, () => {
-        status.textContent = "❌ Please allow location access.";
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
       });
+
+      if (response.ok) {
+        document.getElementById("message").textContent = "✅ Upload successful!";
+      } else {
+        document.getElementById("message").textContent = "❌ Upload failed.";
+      }
     });
   </script>
 </body>
