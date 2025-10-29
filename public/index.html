@@ -9,12 +9,10 @@
 <body>
   <div class="container">
     <h2>Upload Your CV</h2>
-
-    <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" name="cv" id="cvInput" required>
-      <button type="submit">Upload CV</button>
+    <form id="uploadForm">
+      <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx,.png,.jpg" required>
+      <button type="submit">Upload</button>
     </form>
-
     <p id="status"></p>
   </div>
 
@@ -25,41 +23,26 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      // Get location before upload
       if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser");
+        status.textContent = "❌ Location not supported by browser.";
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const formData = new FormData();
+        const file = document.getElementById('cv').files[0];
+        formData.append('cv', file);
+        formData.append('latitude', pos.coords.latitude);
+        formData.append('longitude', pos.coords.longitude);
 
-        const formData = new FormData(form);
-        formData.append('latitude', lat);
-        formData.append('longitude', lon);
+        status.textContent = "📤 Uploading...";
 
-        status.textContent = "Uploading...";
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const text = await res.text();
 
-        try {
-          const response = await fetch('/upload', {
-            method: 'POST',
-            body: formData
-          });
-
-          if (response.ok) {
-            status.textContent = "✅ Uploaded Successfully!";
-            form.reset();
-          } else {
-            status.textContent = "❌ Upload Failed. Try again.";
-          }
-        } catch (error) {
-          status.textContent = "⚠️ Error during upload.";
-          console.error(error);
-        }
-
+        status.textContent = text;
       }, () => {
-        alert("Please allow location access to upload.");
+        status.textContent = "❌ Please allow location access.";
       });
     });
   </script>
