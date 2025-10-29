@@ -4,39 +4,51 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Middleware
-app.use(express.static("public"));
-app.use(express.json());
-
-// Multer for file uploads
+// Set up multer to store uploaded files in /uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    const uploadDir = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
   },
 });
 const upload = multer({ storage });
 
-// Ensure upload & log folders exist
-if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
-if (!fs.existsSync("location_log.txt")) fs.writeFileSync("location_log.txt", "");
+// Middleware
+app.use(express.static("public"));
+app.use("/uploads", express.static("uploads")); // make uploads public
+app.use(express.urlencoded({ extended: true }));
 
 // Upload route
 app.post("/upload", upload.single("cv"), (req, res) => {
+  const file = req.file;
   const { latitude, longitude } = req.body;
 
-  const logEntry = `\n[${new Date().toLocaleString()}] Lat: ${latitude}, Lon: ${longitude}`;
-  fs.appendFileSync("location_log.txt", logEntry);
+  if (!file) {
+    return res.status(400).send("No file uploaded");
+  }
 
-  console.log("✅ CV uploaded:", req.file.filename);
-  console.log("📍 Location:", latitude, longitude);
+  console.log(`✅ CV uploaded: ${file.filename}`);
+  console.log(`📍 Location: ${latitude}, ${longitude}`);
 
-  res.send("File and location received successfully!");
+  // Save location data to file
+  const logData = `${new Date().toISOString()} - File: ${file.filename} - Location: ${latitude}, ${longitude}\n`;
+  fs.appendFileSync("location.log", logData);
+
+  // Response page
+  res.send(`
+    <h2>✅ CV uploaded successfully!</h2>
+    <p>📄 <a href="/uploads/${file.filename}" target="_blank">View Uploaded CV</a></p>
+    <p>📍 Location: ${latitude}, ${longitude}</p>
+    <a href="/">⬅ Go Back</a>
+  `);
 });
 
 // Start server
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
