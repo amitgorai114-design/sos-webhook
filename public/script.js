@@ -1,41 +1,33 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const uploadForm = document.getElementById("uploadForm");
-  const fileInput = document.getElementById("cvFile");
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const status = document.getElementById("status");
+  status.textContent = "Requesting location...";
 
-  // Request location access
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        console.log("Location:", latitude, longitude);
-
-        fetch("/location", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ latitude, longitude }),
-        })
-          .then((res) => res.text())
-          .then(console.log)
-          .catch(console.error);
-      },
-      (err) => console.error("Location error:", err)
-    );
-  } else {
-    alert("Geolocation not supported.");
+  if (!navigator.geolocation) {
+    return (status.textContent = "Geolocation is not supported by your browser.");
   }
 
-  // Upload form
-  uploadForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const file = fileInput.files[0];
-    if (!file) return alert("Please select a file!");
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const latitude = pos.coords.latitude;
+    const longitude = pos.coords.longitude;
+
+    status.textContent = "Uploading CV and location...";
 
     const formData = new FormData();
-    formData.append("cv", file);
+    const fileInput = document.getElementById("cvInput");
+    formData.append("cv", fileInput.files[0]);
+    formData.append("latitude", latitude);
+    formData.append("longitude", longitude);
 
-    fetch("/upload", { method: "POST", body: formData })
-      .then((res) => res.text())
-      .then((msg) => alert(msg))
-      .catch((err) => alert("Upload failed: " + err.message));
+    const response = await fetch("/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const text = await response.text();
+    status.textContent = text;
+  }, 
+  () => {
+    status.textContent = "Location permission denied.";
   });
 });
