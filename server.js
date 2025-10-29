@@ -1,19 +1,35 @@
-const express = require("express");
-const multer = require("multer");
-const path = require("path");
+import express from "express";
+import path from "path";
+import multer from "multer";
+import fs from "fs";
+
 const app = express();
-const port = process.env.PORT || 3000;
+const __dirname = path.resolve();
 
-// Serve index.html directly
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// File upload setup
 const upload = multer({ dest: "uploads/" });
-app.post("/upload", upload.single("cvFile"), (req, res) => {
-  console.log("📁 File uploaded:", req.file);
-  res.send("File uploaded successfully!");
+
+// Serve the main HTML
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-app.listen(port, () => console.log(`✅ Server running on port ${port}`));
+// Handle file upload
+app.post("/upload", upload.single("cv"), (req, res) => {
+  console.log("📄 CV uploaded:", req.file.originalname);
+  res.send("CV uploaded successfully!");
+});
+
+// Receive location data
+app.post("/location", (req, res) => {
+  const { latitude, longitude } = req.body;
+  const log = `${new Date().toISOString()} - ${latitude}, ${longitude}\n`;
+  fs.appendFileSync("locations.log", log);
+  console.log("📍 Location saved:", latitude, longitude);
+  res.status(200).send("Saved");
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
